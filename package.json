@@ -1,0 +1,35 @@
+{
+  "name": "n8n-nodes-chatsuru",
+  "version": "1.0.14",
+  "description": "n8n node para integração com Chatsuru API",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "chatsuru",
+    "tsuru",
+    "blubots"
+  ],
+  "author": "Jean Jr Dev",
+  "license": "MIT",
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/ChatsuruApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Chatsuru/Chatsuru.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "n8n-workflow": "^1.113.0",
+    "typescript": "^5.4.0"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  }
+}
