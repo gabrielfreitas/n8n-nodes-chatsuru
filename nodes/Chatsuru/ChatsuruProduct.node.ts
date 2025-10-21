@@ -208,7 +208,7 @@ export class ChatsuruProduct implements INodeType {
         let method = "GET";
         let body: any = {};
         const headers: { [key: string]: string } = {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Token ${token}`,
           "Content-Type": "application/json",
         };
 

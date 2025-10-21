@@ -72,7 +72,7 @@ export class Chatsuru implements INodeType {
           method: "POST",
           url: "https://blubots.com/api/v1/send/message/",
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Token ${token}`,
             "Content-Type": "application/json",
           },
           body: {
