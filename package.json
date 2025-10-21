@@ -1,12 +1,13 @@
 {
   "name": "n8n-nodes-chatsuru",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "description": "n8n node para integração com Chatsuru API",
   "main": "dist/index.js",
   "scripts": {
     "clean": "rm -rf dist",
     "copy:assets": "gulp copyAssets",
-    "build": "npm run clean && tsc && npm run copy:assets"
+    "build": "npm run clean && tsc && npm run copy:assets",
+    "prepublish": "npm run build"
   },
   "keywords": [
     "n8n-community-node-package",
