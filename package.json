@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-chatsuru",
-  "version": "1.0.21",
+  "version": "1.1.0",
   "description": "n8n node para integração com Chatsuru API",
   "main": "dist/index.js",
   "scripts": {
