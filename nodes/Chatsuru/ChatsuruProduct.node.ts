@@ -54,10 +54,30 @@ export class ChatsuruProduct implements INodeType {
             description: "Get all products",
             action: "Get all products",
           },
+          {
+            name: "Update",
+            value: "update",
+            description: "Update a product",
+            action: "Update a product",
+          },
         ],
         default: "create",
       },
-      // Fields for Create operation
+      // Product ID for Update operation
+      {
+        displayName: "Product ID",
+        name: "productId",
+        type: "string",
+        default: "",
+        required: true,
+        displayOptions: {
+          show: {
+            operation: ["get", "update"],
+          },
+        },
+        description: "ID of the product",
+      },
+      // Fields for Create and Update operations
       {
         displayName: "Name",
         name: "name",
@@ -66,7 +86,7 @@ export class ChatsuruProduct implements INodeType {
         required: true,
         displayOptions: {
           show: {
-            operation: ["create"],
+            operation: ["create", "update"],
           },
         },
         description: "Product name",
@@ -79,7 +99,7 @@ export class ChatsuruProduct implements INodeType {
         required: true,
         displayOptions: {
           show: {
-            operation: ["create"],
+            operation: ["create", "update"],
           },
         },
         description: "Product code",
@@ -95,7 +115,7 @@ export class ChatsuruProduct implements INodeType {
         required: true,
         displayOptions: {
           show: {
-            operation: ["create"],
+            operation: ["create", "update"],
           },
         },
         description: "Product category",
@@ -107,7 +127,7 @@ export class ChatsuruProduct implements INodeType {
         default: "",
         displayOptions: {
           show: {
-            operation: ["create"],
+            operation: ["create", "update"],
           },
         },
         description: "Product description",
@@ -119,7 +139,7 @@ export class ChatsuruProduct implements INodeType {
         default: "",
         displayOptions: {
           show: {
-            operation: ["create"],
+            operation: ["create", "update"],
           },
         },
         description: "Product short description",
@@ -131,7 +151,7 @@ export class ChatsuruProduct implements INodeType {
         default: true,
         displayOptions: {
           show: {
-            operation: ["create"],
+            operation: ["create", "update"],
           },
         },
         description: "Product status",
@@ -144,7 +164,7 @@ export class ChatsuruProduct implements INodeType {
         required: true,
         displayOptions: {
           show: {
-            operation: ["create"],
+            operation: ["create", "update"],
           },
         },
         description: "Organization ID",
@@ -160,7 +180,7 @@ export class ChatsuruProduct implements INodeType {
         placeholder: "Add Store Details",
         displayOptions: {
           show: {
-            operation: ["create"],
+            operation: ["create", "update"],
           },
         },
         options: [
@@ -202,20 +222,6 @@ export class ChatsuruProduct implements INodeType {
             ],
           },
         ],
-      },
-      // Field for Get operation
-      {
-        displayName: "Product ID",
-        name: "productId",
-        type: "string",
-        default: "",
-        required: true,
-        displayOptions: {
-          show: {
-            operation: ["get"],
-          },
-        },
-        description: "ID of the product to retrieve",
       },
     ],
   };
@@ -287,8 +293,8 @@ export class ChatsuruProduct implements INodeType {
 
     for (let i = 0; i < items.length; i++) {
       try {
-        if (operation === "create") {
-          // Create product
+        if (operation === "create" || operation === "update") {
+          // Create or Update product
           const name = this.getNodeParameter("name", i) as string;
           const code = this.getNodeParameter("code", i) as string;
           const category = this.getNodeParameter("category", i) as number;
@@ -297,7 +303,6 @@ export class ChatsuruProduct implements INodeType {
             "short_description",
             i
           ) as string;
-          // O parâmetro 'status' é lido como booleano: true ou false.
           const status = this.getNodeParameter("status", i) as boolean;
           const organization = this.getNodeParameter(
             "organization",
@@ -332,9 +337,16 @@ export class ChatsuruProduct implements INodeType {
             ).toString();
           });
 
+          let url = "https://blubots.com/api/v2/ecommerce/products/";
+
+          if (operation === "update") {
+            const productId = this.getNodeParameter("productId", i) as string;
+            url = `https://blubots.com/api/v2/ecommerce/products/${productId}/`;
+          }
+
           const response = await this.helpers.request({
-            method: "POST",
-            url: "https://blubots.com/api/v2/ecommerce/products/",
+            method: operation === "update" ? "PUT" : "POST",
+            url,
             headers: {
               Authorization: `Token ${token}`,
             },
