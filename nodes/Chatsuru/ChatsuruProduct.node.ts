@@ -3,21 +3,21 @@ import {
   INodeExecutionData,
   INodeType,
   INodeTypeDescription,
+  IDataObject,
   NodeOperationError,
-  INodeProperties,
+  ILoadOptionsFunctions,
+  INodePropertyOptions,
 } from "n8n-workflow";
-
-// URL base para os endpoints de produto.
-const BASE_URL = "https://blubots.com/api/v2/ecommerce/products/";
 
 export class ChatsuruProduct implements INodeType {
   description: INodeTypeDescription = {
     displayName: "Chatsuru Product",
     name: "chatsuruProduct",
-    icon: "file:chatsuru.svg", // Mantendo o mesmo ícone se aplicável
+    icon: "file:chatsuru.svg",
     group: ["transform"],
     version: 1,
-    description: "Gerenciar produtos via Chatsuru/Blubots API",
+    subtitle: '={{$parameter["operation"]}}',
+    description: "Interact with Chatsuru Product API",
     defaults: {
       name: "Chatsuru Product",
     },
@@ -25,32 +25,11 @@ export class ChatsuruProduct implements INodeType {
     outputs: ["main"],
     credentials: [
       {
-        name: "chatsuruApi", // Reutilizando o nome da credencial
+        name: "chatsuruApi",
         required: true,
       },
     ],
-    // As propriedades serão divididas em Resource, Operation e campos específicos
     properties: [
-      // ----------------------------------
-      //         RESOURCE
-      // ----------------------------------
-      {
-        displayName: "Resource",
-        name: "resource",
-        type: "options",
-        noDataExpression: true,
-        options: [
-          {
-            name: "Product",
-            value: "product",
-          },
-        ],
-        default: "product",
-        description: "Recurso a ser acessado.",
-      },
-      // ----------------------------------
-      //         OPERATION
-      // ----------------------------------
       {
         displayName: "Operation",
         name: "operation",
@@ -58,219 +37,255 @@ export class ChatsuruProduct implements INodeType {
         noDataExpression: true,
         options: [
           {
-            name: "List (Multiple Products)",
-            value: "list",
-            description: "Lista produtos da loja.",
-          },
-          {
-            name: "Get (Single Product)",
-            value: "get",
-            description: "Obtém um produto específico pelo ID.",
-          },
-          {
             name: "Create",
             value: "create",
-            description: "Cria um novo produto.",
+            description: "Create a product",
+            action: "Create a product",
           },
           {
-            name: "Update",
-            value: "update",
-            description: "Atualiza um produto existente (PUT).",
+            name: "Get",
+            value: "get",
+            description: "Get a product by ID",
+            action: "Get a product",
           },
           {
-            name: "Delete",
-            value: "delete",
-            description: "Exclui um produto.",
+            name: "Get All",
+            value: "getAll",
+            description: "Get all products",
+            action: "Get all products",
           },
         ],
-        default: "list",
-        description: "Operação a ser executada no recurso.",
+        default: "create",
       },
-
-      // ----------------------------------
-      //         PROPRIEDADES DA OPERAÇÃO LIST
-      // ----------------------------------
+      // Fields for Create operation
       {
-        displayName: "Store ID",
-        name: "storeIdList",
+        displayName: "Name",
+        name: "name",
         type: "string",
-        default: "1",
+        default: "",
         required: true,
         displayOptions: {
           show: {
-            resource: ["product"],
-            operation: ["list"],
+            operation: ["create"],
           },
         },
-        description: "ID da loja para listar os produtos.",
+        description: "Product name",
       },
-
-      // ----------------------------------
-      //         PROPRIEDADES DA OPERAÇÃO GET/UPDATE/DELETE
-      // ----------------------------------
       {
-        displayName: "Product ID (PK)",
+        displayName: "Code",
+        name: "code",
+        type: "string",
+        default: "",
+        required: true,
+        displayOptions: {
+          show: {
+            operation: ["create"],
+          },
+        },
+        description: "Product code",
+      },
+      {
+        displayName: "Category",
+        name: "category",
+        type: "options",
+        typeOptions: {
+          loadOptionsMethod: "getCategories",
+        },
+        default: "",
+        required: true,
+        displayOptions: {
+          show: {
+            operation: ["create"],
+          },
+        },
+        description: "Product category",
+      },
+      {
+        displayName: "Description",
+        name: "description",
+        type: "string",
+        default: "",
+        displayOptions: {
+          show: {
+            operation: ["create"],
+          },
+        },
+        description: "Product description",
+      },
+      {
+        displayName: "Short Description",
+        name: "short_description",
+        type: "string",
+        default: "",
+        displayOptions: {
+          show: {
+            operation: ["create"],
+          },
+        },
+        description: "Product short description",
+      },
+      {
+        displayName: "Status",
+        name: "status",
+        type: "boolean",
+        default: true,
+        displayOptions: {
+          show: {
+            operation: ["create"],
+          },
+        },
+        description: "Product status",
+      },
+      {
+        displayName: "Organization",
+        name: "organization",
+        type: "number",
+        default: 1,
+        required: true,
+        displayOptions: {
+          show: {
+            operation: ["create"],
+          },
+        },
+        description: "Organization ID",
+      },
+      // Field for Get operation
+      {
+        displayName: "Product ID",
         name: "productId",
         type: "string",
         default: "",
         required: true,
-        placeholder: "123",
         displayOptions: {
           show: {
-            resource: ["product"],
-            operation: ["get", "update", "delete"],
+            operation: ["get"],
           },
         },
-        description: "ID (PK) do produto a ser buscado/atualizado/excluído.",
+        description: "ID of the product to retrieve",
       },
-
-      // ----------------------------------
-      //         PROPRIEDADES DA OPERAÇÃO CREATE/UPDATE
-      // ----------------------------------
-      {
-        displayName: "Product Fields",
-        name: "productFields",
-        type: "json",
-        default: JSON.stringify(
-          {
-            name: "AIRPODS IPHONE",
-            code: "32861",
-            image: null,
-            short_description: null,
-            description: null,
-            installments: null,
-            installments_amount: null,
-            url: null,
-            status: true,
-            organization: 1,
-            user: 6,
-            category: 899,
-            product_stores: [
-              {
-                store: 1,
-                price: "950.00",
-                stock: 9,
-                is_active: true,
-              },
-            ],
-          },
-          null,
-          2,
-        ),
-        required: true,
-        displayOptions: {
-          show: {
-            resource: ["product"],
-            operation: ["create", "update"],
-          },
-        },
-        description:
-          "Objeto JSON com os dados do produto. Use o formato do payload de exemplo.",
-      },
-      // Necessário para a URL do Create
-      {
-        displayName: "Store ID (Create)",
-        name: "storeIdCreate",
-        type: "string",
-        default: "1",
-        required: true,
-        displayOptions: {
-          show: {
-            resource: ["product"],
-            operation: ["create"],
-          },
-        },
-        description: "ID da loja para o endpoint de criação.",
-      },
-    ] as INodeProperties[],
+    ],
   };
 
-  // Método de execução
-  async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-    const items = this.getInputData();
-    const returnData: INodeExecutionData[] = [];
+  methods = {
+    loadOptions: {
+      async getCategories(
+        this: ILoadOptionsFunctions
+      ): Promise<INodePropertyOptions[]> {
+        const credentials = await this.getCredentials("chatsuruApi");
+        const token = credentials.token as string;
 
-    // Pega as credenciais UMA VEZ antes do loop
-    const credentials = await this.getCredentials("chatsuruApi");
-
-    // Verifica se pegou as credenciais e obtém o token
-    if (!credentials) {
-      throw new NodeOperationError(this.getNode(), "Credenciais não configuradas");
-    }
-
-    const token = credentials.token as string;
-
-    const operation = this.getNodeParameter("operation", 0) as string;
-
-    for (let i = 0; i < items.length; i++) {
-      try {
-        let url = BASE_URL;
-        let method = "GET";
-        let body: any = {};
-        const headers: { [key: string]: string } = {
-          Authorization: `Token ${token}`,
-          "Content-Type": "application/json",
-        };
-
-        // Lógica para construir URL, Método e Body baseado na Operação
-        if (operation === "list") {
-          const storeIdList = this.getNodeParameter("storeIdList", i) as string;
-          url = `${BASE_URL}?store_id=${storeIdList}`;
-          method = "GET";
-        } else if (operation === "get") {
-          const productId = this.getNodeParameter("productId", i) as string;
-          url = `${BASE_URL}${productId}/`;
-          method = "GET";
-        } else if (operation === "create") {
-          const storeIdCreate = this.getNodeParameter("storeIdCreate", i) as string;
-          const productFields = this.getNodeParameter("productFields", i);
-          url = `${BASE_URL}?store_id=${storeIdCreate}`;
-          method = "POST";
-          body = JSON.parse(productFields as string);
-        } else if (operation === "update") {
-          const productId = this.getNodeParameter("productId", i) as string;
-          const productFields = this.getNodeParameter("productFields", i);
-          url = `${BASE_URL}${productId}/`;
-          method = "PUT";
-          body = JSON.parse(productFields as string);
-        } else if (operation === "delete") {
-          const productId = this.getNodeParameter("productId", i) as string;
-          url = `${BASE_URL}${productId}/`;
-          method = "DELETE";
-        }
-
-        // Executa a requisição HTTP
-        const response = await this.helpers.httpRequest({
-          method: method as any,
-          url: url,
-          headers: headers,
-          body: body,
+        const response = await this.helpers.request({
+          method: "GET",
+          url: "https://blubots.com/api/v2/ecommerce/categories/",
+          headers: {
+            Authorization: `Token ${token}`,
+          },
           json: true,
         });
 
-        // Adiciona o resultado
-        returnData.push({
-          json: response,
-          pairedItem: { item: i },
-        });
+        const categories = response.results as Array<{
+          id: number;
+          name: string;
+        }>;
+
+        return categories.map((category) => ({
+          name: category.name,
+          value: category.id,
+        }));
+      },
+    },
+  };
+
+  async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+    const items = this.getInputData();
+    const returnData: IDataObject[] = [];
+    const operation = this.getNodeParameter("operation", 0) as string;
+
+    // Get credentials
+    const credentials = await this.getCredentials("chatsuruApi");
+    const token = credentials.token as string;
+
+    for (let i = 0; i < items.length; i++) {
+      try {
+        if (operation === "create") {
+          // Create product
+          const name = this.getNodeParameter("name", i) as string;
+          const code = this.getNodeParameter("code", i) as string;
+          const category = this.getNodeParameter("category", i) as number;
+          const description = this.getNodeParameter("description", i) as string;
+          const short_description = this.getNodeParameter(
+            "short_description",
+            i
+          ) as string;
+          const status = this.getNodeParameter("status", i) as boolean;
+          const organization = this.getNodeParameter(
+            "organization",
+            i
+          ) as number;
+
+          const body = {
+            name,
+            code,
+            category,
+            description,
+            short_description,
+            status,
+            organization,
+          };
+
+          const response = await this.helpers.request({
+            method: "POST",
+            url: "https://blubots.com/api/v2/ecommerce/products/",
+            headers: {
+              Authorization: `Token ${token}`,
+              "Content-Type": "application/json",
+            },
+            body,
+            json: true,
+          });
+
+          returnData.push(response as IDataObject);
+        } else if (operation === "get") {
+          // Get product by ID
+          const productId = this.getNodeParameter("productId", i) as string;
+
+          const response = await this.helpers.request({
+            method: "GET",
+            url: `https://blubots.com/api/v2/ecommerce/products/${productId}`,
+            headers: {
+              Authorization: `Token ${token}`,
+            },
+            json: true,
+          });
+
+          returnData.push(response as IDataObject);
+        } else if (operation === "getAll") {
+          // Get all products
+          const response = await this.helpers.request({
+            method: "GET",
+            url: "https://blubots.com/api/v2/ecommerce/products/",
+            headers: {
+              Authorization: `Token ${token}`,
+            },
+            json: true,
+          });
+
+          // If response is an array, add each item
+          if (Array.isArray(response)) {
+            returnData.push(...(response as IDataObject[]));
+          } else {
+            returnData.push(response as IDataObject);
+          }
+        }
       } catch (error) {
         if (this.continueOnFail()) {
-          const errorData: any = { error: (error as Error).message };
-          // Tenta incluir parâmetros para contexto
-          try {
-            errorData.productId = this.getNodeParameter("productId", i, null);
-          } catch {}
-
-          returnData.push({
-            json: errorData,
-            pairedItem: { item: i },
-          });
+          returnData.push({ error: error.message });
           continue;
         }
-        throw error;
+        throw new NodeOperationError(this.getNode(), error);
       }
     }
 
-    return [returnData];
+    return [this.helpers.returnJsonArray(returnData)];
   }
 }
