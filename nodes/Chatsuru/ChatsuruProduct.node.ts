@@ -149,6 +149,60 @@ export class ChatsuruProduct implements INodeType {
         },
         description: "Organization ID",
       },
+      {
+        displayName: "Store Details",
+        name: "storeDetails",
+        type: "fixedCollection",
+        typeOptions: {
+          multipleValues: true,
+        },
+        default: {},
+        placeholder: "Add Store Details",
+        displayOptions: {
+          show: {
+            operation: ["create"],
+          },
+        },
+        options: [
+          {
+            name: "storeValues",
+            displayName: "Store",
+            values: [
+              {
+                displayName: "Store",
+                name: "store",
+                type: "options",
+                typeOptions: {
+                  loadOptionsMethod: "getStores",
+                },
+                default: "",
+                description: "Store ID",
+              },
+              {
+                displayName: "Price",
+                name: "price",
+                type: "number",
+                default: 0,
+                description: "Product price in this store",
+              },
+              {
+                displayName: "Stock",
+                name: "stock",
+                type: "number",
+                default: 0,
+                description: "Product stock quantity",
+              },
+              {
+                displayName: "Is Active",
+                name: "is_active",
+                type: "boolean",
+                default: true,
+                description: "Whether the product is active in this store",
+              },
+            ],
+          },
+        ],
+      },
       // Field for Get operation
       {
         displayName: "Product ID",
@@ -193,6 +247,32 @@ export class ChatsuruProduct implements INodeType {
           value: category.id,
         }));
       },
+      async getStores(
+        this: ILoadOptionsFunctions
+      ): Promise<INodePropertyOptions[]> {
+        const credentials = await this.getCredentials("chatsuruApi");
+        const token = credentials.token as string;
+
+        const response = await this.helpers.request({
+          method: "GET",
+          url: "https://blubots.com/api/v2/ecommerce/store/",
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+          json: true,
+        });
+
+        const stores = response as Array<{
+          id: number;
+          name: string;
+          description: string;
+        }>;
+
+        return stores.map((store) => ({
+          name: `${store.name} - ${store.description || "No description"}`,
+          value: store.id,
+        }));
+      },
     },
   };
 
@@ -217,30 +297,48 @@ export class ChatsuruProduct implements INodeType {
             "short_description",
             i
           ) as string;
+          // O parâmetro 'status' é lido como booleano: true ou false.
           const status = this.getNodeParameter("status", i) as boolean;
           const organization = this.getNodeParameter(
             "organization",
             i
           ) as number;
 
-          const body = {
+          // Get store details
+          const storeDetails = this.getNodeParameter(
+            "storeDetails",
+            i
+          ) as IDataObject;
+          const storeValues = (storeDetails.storeValues as IDataObject[]) || [];
+
+          // Build form data
+          const formData: IDataObject = {
             name,
             code,
             category,
             description,
             short_description,
-            status,
+            status: status.toString(),
             organization,
           };
+
+          // Add product_stores data
+          storeValues.forEach((storeValue, index) => {
+            formData[`product_stores[${index}]store`] = storeValue.store;
+            formData[`product_stores[${index}]price`] = storeValue.price;
+            formData[`product_stores[${index}]stock`] = storeValue.stock;
+            formData[`product_stores[${index}]is_active`] = (
+              storeValue.is_active as boolean
+            ).toString();
+          });
 
           const response = await this.helpers.request({
             method: "POST",
             url: "https://blubots.com/api/v2/ecommerce/products/",
             headers: {
               Authorization: `Token ${token}`,
-              "Content-Type": "application/json",
             },
-            body,
+            formData,
             json: true,
           });
 
@@ -279,10 +377,12 @@ export class ChatsuruProduct implements INodeType {
         }
       } catch (error) {
         if (this.continueOnFail()) {
-          returnData.push({ error: error.message });
+          returnData.push({ error: (error as Error).message });
           continue;
         }
-        throw new NodeOperationError(this.getNode(), error);
+        throw new NodeOperationError(this.getNode(), error as Error, {
+          itemIndex: i,
+        });
       }
     }
 
