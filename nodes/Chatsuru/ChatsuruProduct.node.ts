@@ -161,7 +161,7 @@ export class ChatsuruProduct implements INodeType {
         name: "organization",
         type: "number",
         default: 1,
-        required: true,
+        required: false,
         displayOptions: {
           show: {
             operation: ["create", "update"],
