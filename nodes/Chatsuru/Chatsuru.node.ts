@@ -71,6 +71,24 @@ export class Chatsuru implements INodeType {
         default: "",
       },
       {
+        displayName: "Status de atendimento",
+        name: "status",
+        type: "options",
+        options: [
+          { name: "Vazio", value: "" },
+          { name: "bot", value: "bot" },
+          { name: "closed", value: "closed" },
+          { name: "waiting", value: "waiting" },
+        ],
+        required: false,
+        displayOptions: {
+          show: {
+            operation: ["sendMessage", "sendFile"],
+          },
+        },
+        default: "",
+      },
+      {
         displayName: "Help Desk ID",
         name: "help_desk_id",
         type: "string",
@@ -107,22 +125,6 @@ export class Chatsuru implements INodeType {
         displayName: "Channel ID",
         name: "channel_id",
         type: "string",
-        displayOptions: {
-          show: {
-            operation: ["sendMessage"],
-          },
-        },
-        default: "",
-      },
-      {
-        displayName: "Status",
-        name: "status",
-        type: "options",
-        options: [
-          { name: "bot", value: "bot" },
-          { name: "closed", value: "closed" },
-          { name: "waiting", value: "waiting" },
-        ],
         displayOptions: {
           show: {
             operation: ["sendMessage"],
@@ -260,6 +262,7 @@ export class Chatsuru implements INodeType {
           i,
           false
         ) as boolean;
+        const file_status = this.getNodeParameter("status", i, "");
 
         const binaryData = await this.helpers.getBinaryDataBuffer(
           i,
@@ -272,14 +275,9 @@ export class Chatsuru implements INodeType {
         const formData = new FormData();
 
         if (binaryData && binaryDataInfo) {
-          // 🚨 CORREÇÃO PRINCIPAL: Cria um Blob a partir do Buffer binário
-          const fileBlob = new Blob(
-            [binaryData], // Array contendo o Buffer
-            { type: binaryDataInfo.mimeType } // Define o tipo MIME
-          );
-
-          // Anexa o Blob e, no terceiro argumento, informa o nome do arquivo,
-          // o que faz com que o Blob seja tratado como um File para o envio.
+          const fileBlob = new Blob([binaryData], {
+            type: binaryDataInfo.mimeType,
+          });
           formData.append("arquivo", fileBlob, binaryDataInfo.fileName);
         } else {
           throw new Error(
@@ -294,6 +292,7 @@ export class Chatsuru implements INodeType {
         if (file_close_session === true) {
           formData.append("close_session", "true");
         }
+        if (file_status) formData.append("status", file_status);
 
         const response = await this.helpers.httpRequest({
           method: "POST",
@@ -301,7 +300,7 @@ export class Chatsuru implements INodeType {
           headers: {
             Authorization: `Token ${token}`,
           },
-          body: formData, // Envia o FormData
+          body: formData,
         });
 
         returnData.push({ json: response });
