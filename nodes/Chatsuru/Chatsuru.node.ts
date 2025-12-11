@@ -43,6 +43,10 @@ export class Chatsuru implements INodeType {
             name: "Listar Canais",
             value: "listChannels",
           },
+          {
+            name: "Listar Etiquetas",
+            value: "listTags",
+          },
         ],
         default: "sendMessage",
       },
@@ -131,6 +135,19 @@ export class Chatsuru implements INodeType {
           },
         },
         default: "",
+      },
+      {
+        displayName: "Etiquetas (IDs separadas por vírgula)",
+        name: "tags",
+        type: "string",
+        displayOptions: {
+          show: {
+            operation: ["sendMessage", "sendFile"],
+          },
+        },
+        default: "",
+        description:
+          "IDs das etiquetas separadas por vírgula para associar à mensagem",
       },
       {
         displayName: "Botões (JSON Array)",
@@ -223,6 +240,7 @@ export class Chatsuru implements INodeType {
         const channel_id = this.getNodeParameter("channel_id", i, "");
         const status = this.getNodeParameter("status", i, "");
         const buttons = this.getNodeParameter("buttons", i, "");
+        const tagsRaw = this.getNodeParameter("tags", i, "") as string | object;
 
         if (phone) body.phone = phone;
         if (help_desk_id) body.help_desk_id = help_desk_id;
@@ -236,6 +254,13 @@ export class Chatsuru implements INodeType {
           } catch (e) {
             throw new Error("Botões devem ser um array JSON válido");
           }
+        }
+        if (tagsRaw) {
+          const tagsArray = (tagsRaw as string)
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter((tag) => tag !== "");
+          body.tags = tagsArray;
         }
 
         const response = await this.helpers.httpRequest({
@@ -263,6 +288,19 @@ export class Chatsuru implements INodeType {
           false
         ) as boolean;
         const file_status = this.getNodeParameter("status", i, "");
+        const tagsRaw = this.getNodeParameter("tags", i, "") as string | object;
+
+        let tagsArray: string[] = [];
+        if (tagsRaw) {
+          tagsArray = (tagsRaw as string)
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter((tag) => tag !== "");
+        }
+
+        if (tagsArray.length > 0) {
+          // Adiciona as tags ao formData mais tarde
+        } 
 
         const binaryData = await this.helpers.getBinaryDataBuffer(
           i,
@@ -293,6 +331,11 @@ export class Chatsuru implements INodeType {
           formData.append("close_session", "true");
         }
         if (file_status) formData.append("status", file_status);
+        if (tagsArray.length > 0) {
+          tagsArray.forEach((tag, index) => {
+            formData.append(`tags[${index}]`, tag);
+          });
+        }
 
         const response = await this.helpers.httpRequest({
           method: "POST",
@@ -316,6 +359,23 @@ export class Chatsuru implements INodeType {
           json: true,
         });
         returnData.push({ json: response });
+      }
+
+      if (operation === "listTags") {
+        const response = await this.helpers.httpRequest({
+          method: "GET",
+          url: "https://blubots.com/api/v2/tags/",
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+          json: true,
+        });
+        const tags = response.results.map((tag: any) => ({
+          id: tag.id,
+          name: tag.name,
+          color: tag.color,
+        }));
+        returnData.push({ json: {tags} });
       }
     }
 
